@@ -60,10 +60,12 @@ export function App() {
     };
     navigator.serviceWorker?.addEventListener("message", onMessage);
     // iOS keeps audio suspended until a tap, and re-suspends it after backgrounding.
-    window.addEventListener("pointerdown", unlock, { passive: true });
+    // Touch pointerdown isn't a user gesture to WebKit; touchend and click are.
+    const GESTURES = ["pointerdown", "touchend", "click", "keydown"] as const;
+    for (const g of GESTURES) window.addEventListener(g, unlock, { passive: true });
     return () => {
       navigator.serviceWorker?.removeEventListener("message", onMessage);
-      window.removeEventListener("pointerdown", unlock);
+      for (const g of GESTURES) window.removeEventListener(g, unlock);
     };
   }, [openToday]);
 

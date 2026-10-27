@@ -2,7 +2,8 @@
 
 import clsx from "clsx";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import { play, preload, shepard, stopAll, toPerf } from "@/lib/audio";
+import { Volume2 } from "lucide-react";
+import { play, preload, shepard, soundOn, stopAll, toPerf, unlock } from "@/lib/audio";
 import {
   advance,
   deck,
@@ -117,8 +118,10 @@ export function LadderRun({
                 </button>
               ))}
             </div>
-            <p className="max-w-[280px] text-[14px] leading-snug text-muted">
-              Tap a pitch to hear it. Anything else is <span className="font-semibold text-fg">Other</span>.
+            <p className="max-w-[290px] text-[15px] leading-snug text-muted">
+              Tap {set.length === 1 ? pcName(set[0], naming) : "each"} to hear {set.length === 1 ? "it" : "them"} first. Then
+              name every note you hear. Not {set.length === 1 ? pcName(set[0], naming) : "one of these"}? Tap{" "}
+              <span className="font-semibold text-fg">Other</span>.
             </p>
           </div>
           <div className="flex flex-col gap-1 px-5 pb-6">
@@ -216,6 +219,8 @@ function Trials({
   const bar = useRef<HTMLDivElement>(null);
   const onset = useRef(0);
   const [startedAt, setStartedAt] = useState(0);
+  // Never run a level in silence: answering blind still scores.
+  const [muted, setMuted] = useState(() => !soundOn());
   const raf = useRef(0);
   const score = useRef({ c: 0, rts: [] as number[] });
   const set = trained(stage);
@@ -251,6 +256,7 @@ function Trials({
   // Starts each trial: play, then run the clock from the tone's onset.
   useEffect(() => {
     if (i < 0) {
+      if (muted) return;
       const t = window.setTimeout(() => setI(0), 500);
       return () => window.clearTimeout(t);
     }
@@ -279,7 +285,7 @@ function Trials({
     };
     // Runs per trial; everything else it reads is fixed for the level.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [i]);
+  }, [i, muted]);
 
   // Too slow counts as wrong.
   const late = useEffectEvent(() => resolve("late"));
@@ -304,11 +310,25 @@ function Trials({
       <SessionBar onClose={onClose} progress={Math.max(0, i + (picked !== null ? 1 : 0)) / trials.length} right={`${Math.min(trials.length, Math.max(1, i + 1))}/${trials.length}`} />
       <div className="flex flex-1 flex-col items-center justify-center gap-5 py-6">
         <div className="h-5 text-[15px] font-medium text-muted">{feedback ? "" : "No feedback"}</div>
-        <Orb tone={tone} disabled>
-          <span className="text-[40px] font-semibold tracking-tight">
-            {picked !== null && feedback && !right && trial ? (trial.outside ? pcName(trial.pc, naming) : picked === "late" ? "Late" : "") : ""}
-          </span>
-        </Orb>
+        {muted ? (
+          <Orb
+            onClick={() => {
+              unlock();
+              setMuted(false);
+            }}
+          >
+            <span className="flex flex-col items-center gap-2">
+              <Volume2 size={36} strokeWidth={2} />
+              <span className="text-[15px] font-semibold">Tap for sound</span>
+            </span>
+          </Orb>
+        ) : (
+          <Orb tone={tone} playing={startedAt > 0 && picked === null} disabled>
+            <span className="text-[40px] font-semibold tracking-tight">
+              {picked !== null && feedback && !right && trial ? (trial.outside ? pcName(trial.pc, naming) : picked === "late" ? "Late" : "") : ""}
+            </span>
+          </Orb>
+        )}
         <div className="h-1 w-[168px] overflow-hidden rounded-full bg-fill">
           <div ref={bar} className="h-full origin-left bg-accent" style={{ transform: "scaleX(1)" }} />
         </div>

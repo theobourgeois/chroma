@@ -68,9 +68,45 @@ export function audio(): AudioContext {
   return ctx;
 }
 
-/** Call from a tap: iOS only starts audio inside a user gesture. */
+let media: HTMLAudioElement | null = null;
+
+/** A quarter second of 8 kHz 8-bit silence, as a WAV data URL. */
+function silence(): string {
+  const n = 2000;
+  const bytes = new Uint8Array(44 + n);
+  const view = new DataView(bytes.buffer);
+  const text = (at: number, s: string) => [...s].forEach((ch, i) => (bytes[at + i] = ch.charCodeAt(0)));
+  text(0, "RIFF");
+  view.setUint32(4, 36 + n, true);
+  text(8, "WAVEfmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true);
+  view.setUint32(28, 8000, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  text(36, "data");
+  view.setUint32(40, n, true);
+  bytes.fill(128, 44);
+  return `data:audio/wav;base64,${btoa(String.fromCharCode(...bytes))}`;
+}
+
+/**
+ * Call from a tap: iOS only starts audio inside a user gesture. Playing an
+ * <audio> element once also moves the page onto the media channel, so the
+ * ring/silent switch doesn't mute Web Audio where audioSession is missing or ignored.
+ */
 export function unlock() {
   const c = audio();
+  if (!media) {
+    media = new Audio(silence());
+    media.setAttribute("x-webkit-airplay", "deny");
+    media.preload = "auto";
+    void media.play().catch(() => {
+      media = null;
+    });
+  }
   if (c.state === "running") return;
   void c.resume();
   const b = c.createBuffer(1, 1, 22050);
@@ -79,6 +115,9 @@ export function unlock() {
   s.connect(c.destination);
   s.start();
 }
+
+/** False until a tap has started audio (and again after iOS suspends it in the background). */
+export const soundOn = () => ctx?.state === "running";
 
 export function micSession(on: boolean) {
   setSession(on ? "play-and-record" : "playback");
