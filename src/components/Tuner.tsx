@@ -9,9 +9,6 @@ import { listen } from "@/lib/pitch";
 import { useStore } from "@/lib/store";
 import { Button, Layer } from "./ui";
 
-/** Readings to take the median of: steadies the note without lagging much. */
-const SMOOTH = 7;
-
 /** Hum or sing anything; it names the note. Not a game, nothing is recorded. */
 export function Tuner({ onClose }: { onClose: () => void }) {
   const naming = useStore((s) => s.settings.naming);
@@ -23,22 +20,12 @@ export function Tuner({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     let alive = true;
-    const recent: number[] = [];
     const start = async () => {
       if (stop.current) return;
       try {
         const off = await listen((midi) => {
-          if (midi === null) {
-            recent.length = 0;
-            setLive(null);
-            return;
-          }
-          recent.push(midi);
-          if (recent.length > SMOOTH) recent.shift();
-          if (recent.length < 3) return;
-          const m = [...recent].sort((a, b) => a - b)[recent.length >> 1];
-          setLive(m);
-          setLast(m);
+          setLive(midi);
+          if (midi !== null) setLast(midi);
         });
         if (!alive) return off();
         stop.current = off;
