@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { BarChart3, Dumbbell, Settings as Gear, Sun } from "lucide-react";
+import { BarChart3, Dumbbell, Settings as Gear, Mic, Sun } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { preload, unlock } from "@/lib/audio";
 import { plan, type Step } from "@/lib/daily";
@@ -14,6 +14,7 @@ import { Runner } from "./Runner";
 import { Settings } from "./Settings";
 import { Today } from "./Today";
 import { Train } from "./Train";
+import { Tuner } from "./Tuner";
 
 type Tab = "today" | "train" | "progress";
 
@@ -29,7 +30,8 @@ export function App() {
   const [tab, setTab] = useState<Tab>("today");
   const [session, setSession] = useState<{ steps: Step[]; daily: boolean; id: number } | null>(null);
   const [settings, setSettings] = useState(false);
-  const busy = session !== null;
+  const [tuner, setTuner] = useState(false);
+  const busy = session !== null || tuner;
 
   useReloadOnDeploy(busy);
 
@@ -84,14 +86,24 @@ export function App() {
     <div className="mx-auto flex min-h-dvh max-w-[520px] flex-col pt-[env(safe-area-inset-top)]">
       <header className="flex h-14 items-center justify-between px-5">
         <h1 className="text-[28px] font-bold tracking-tight">{TABS.find((t) => t.id === tab)!.name}</h1>
-        <button
-          type="button"
-          aria-label="Settings"
-          onClick={() => setSettings(true)}
-          className="-mr-2 grid size-10 place-items-center rounded-full text-muted active:bg-fill"
-        >
-          <Gear size={22} strokeWidth={2} />
-        </button>
+        <div className="-mr-2 flex">
+          <button
+            type="button"
+            aria-label="Tuner"
+            onClick={() => setTuner(true)}
+            className="grid size-10 place-items-center rounded-full text-muted active:bg-fill"
+          >
+            <Mic size={22} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            aria-label="Settings"
+            onClick={() => setSettings(true)}
+            className="grid size-10 place-items-center rounded-full text-muted active:bg-fill"
+          >
+            <Gear size={22} strokeWidth={2} />
+          </button>
+        </div>
       </header>
 
       <main className={clsx("flex-1 pb-[calc(76px+env(safe-area-inset-bottom))]", !hydrated && "opacity-0")}>
@@ -121,6 +133,7 @@ export function App() {
 
       {session && <Runner key={session.id} steps={session.steps} daily={session.daily} onClose={close} />}
       {settings && <Settings onClose={() => setSettings(false)} />}
+      {tuner && <Tuner onClose={() => setTuner(false)} />}
     </div>
   );
 }
