@@ -5,6 +5,7 @@ A perfect-pitch and ear-training PWA with a daily practice reminder.
 **Live:** https://chroma-cyan-tau.vercel.app (on iPhone, Share → Add to Home Screen to get reminders)
 
 - **Notes**: learn the 12 pitches one at a time, a ladder of levels per note
+- **Memory check**: a daily test with no notes played first; new notes only open once you pass it
 - **Ear games**: intervals, chords, progressions, scales, keys, and singing a note back
 - **Tuner**: hum, sing or whistle and see the note
 - **Daily reminder**: a web push at the time you pick

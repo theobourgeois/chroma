@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Step } from "@/lib/daily";
 import { syncReminder } from "@/lib/reminder";
 import { dayKey, get, streak, update } from "@/lib/store";
+import { ColdCheck } from "./ColdCheck";
 import { LadderRun } from "./LadderRun";
 import { Quiz, type Result } from "./Quiz";
 import { Sing } from "./Sing";
@@ -71,6 +72,8 @@ export function Runner({ steps, daily, onClose }: { steps: Step[]; daily: boolea
         </div>
       ) : step.game === "ladder" ? (
         <LadderRun key={`${idx}-${round}`} levels={daily ? step.count : Infinity} onDone={finished} onClose={onClose} />
+      ) : step.game === "cold" ? (
+        <ColdCheck key={`${idx}-${round}`} count={step.count} onDone={finished} onClose={onClose} />
       ) : step.game === "sing" ? (
         <Sing key={`${idx}-${round}`} count={step.count} onDone={finished} onClose={onClose} />
       ) : (

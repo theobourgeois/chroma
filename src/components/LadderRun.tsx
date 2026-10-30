@@ -6,6 +6,8 @@ import { Volume2 } from "lucide-react";
 import { play, preload, shepard, soundOn, stopAll, toPerf, unlock } from "@/lib/audio";
 import {
   advance,
+  COLD_PASS,
+  COLD_STREAK,
   deck,
   FINAL_WAIT,
   finalCheck,
@@ -26,7 +28,7 @@ import type { Result } from "./Quiz";
 import { Button, SessionBar } from "./ui";
 
 type Phase = "brief" | "wash" | "run" | "result";
-type Outcome = { acc: number; rt: number; pass: boolean; newPitch?: number; jumped?: boolean };
+type Outcome = { acc: number; rt: number; pass: boolean; newPitch?: number; jumped?: boolean; held?: boolean };
 
 const WASH_SECS = 20;
 
@@ -173,6 +175,11 @@ export function LadderRun({
                       : "Passed"
                     : "Again"}
             </div>
+            {outcome.held && (
+              <div className="max-w-[260px] text-[15px] text-muted">
+                The next note opens after {COLD_STREAK} memory checks in a row at {Math.round(COLD_PASS * 100)}%
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-1 px-5 pb-6">
             {!done ? (
@@ -197,8 +204,9 @@ export function LadderRun({
 }
 
 /** One level: tones, a shrinking answer window, the keyboard plus "Other". */
-function Trials({
+export function Trials({
   stage,
+  count,
   windowMs: limit,
   feedback,
   sound,
@@ -206,6 +214,7 @@ function Trials({
   onFinish,
 }: {
   stage: number;
+  count?: number;
   windowMs: number;
   feedback: boolean;
   sound: Parameters<typeof play>[1];
@@ -213,7 +222,7 @@ function Trials({
   onFinish: (acc: number, rt: number, n: number, c: number) => void;
 }) {
   const naming = useStore((s) => s.settings.naming);
-  const [trials] = useState<Trial[]>(() => deck(stage));
+  const [trials] = useState<Trial[]>(() => deck(stage, count));
   const [i, setI] = useState(-1);
   const [picked, setPicked] = useState<number | "other" | "late" | null>(null);
   const bar = useRef<HTMLDivElement>(null);

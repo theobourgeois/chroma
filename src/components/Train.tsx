@@ -8,7 +8,7 @@ import { GAMES, pool } from "@/lib/games";
 import { LEVELS } from "@/lib/ladder";
 import { accuracy, type GameId, type State, useStore } from "@/lib/store";
 
-type Row = { game: GameId; name: string; count: number };
+type Row = { game: Exclude<GameId, "cold">; name: string; count: number };
 
 const SECTIONS: { title: string; rows: Row[] }[] = [
   {

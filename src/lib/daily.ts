@@ -1,4 +1,4 @@
-import { spotlightDue } from "./ladder";
+import { coldDue, coldTrials, spotlightDue } from "./ladder";
 import { dayKey, type GameId, type State } from "./store";
 
 export type Step = { game: GameId; count: number; name: string };
@@ -29,7 +29,9 @@ export function plan(s: State, key = dayKey()): Step[] {
   const saved = s.days[key]?.plan;
   if (saved) return saved;
   const i = dayIndex(key);
-  const steps: Step[] = [{ game: "ladder", count: DAILY_LEVELS, name: "Perfect pitch" }];
+  const steps: Step[] = [];
+  if (coldDue(s.ladder, s.days[key])) steps.push({ game: "cold", count: coldTrials(s.ladder.stage), name: "From memory" });
+  steps.push({ game: "ladder", count: DAILY_LEVELS, name: "Perfect pitch" });
   if (spotlightDue(s.ladder)) steps.push({ game: "spotlight", count: 34, name: "Spotlight" });
   const rel = RELATIVE[i % RELATIVE.length];
   const app = APPLIED[i % APPLIED.length];

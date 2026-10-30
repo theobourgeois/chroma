@@ -51,7 +51,7 @@ const learned = (s: State) => {
 /** Root notes stay in a comfortable middle register. */
 const root = (lo = 48, hi = 64) => lo + rand(hi - lo + 1);
 
-export const GAMES: Record<Exclude<GameId, "ladder" | "sing">, Game> = {
+export const GAMES: Record<Exclude<GameId, "ladder" | "cold" | "sing">, Game> = {
   notes: {
     id: "notes",
     name: "Notes",

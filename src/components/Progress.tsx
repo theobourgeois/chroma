@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { trained } from "@/lib/ladder";
+import { COLD_PASS, trained } from "@/lib/ladder";
 import { pcName } from "@/lib/music";
 import { accuracy, bestStreak, dayKey, type GameId, streak, useStore } from "@/lib/store";
 
@@ -24,6 +24,8 @@ export function Progress() {
   const set = trained(s.ladder.stage);
   const runs = s.ladder.log.slice(-40);
   const games = GAME_NAMES.filter(([id]) => s.games[id]?.n);
+  const cold = s.ladder.cold.slice(-40);
+  const lastCold = cold[cold.length - 1];
 
   return (
     <div className="flex flex-col gap-7 px-5 pt-2 pb-8">
@@ -32,6 +34,25 @@ export function Progress() {
         <Stat value={bestStreak(s.days)} label="Best" />
         <Stat value={minutes} label="Minutes" />
       </div>
+
+      {lastCold && (
+        <Section title="From memory" right={`${Math.round((lastCold.c / lastCold.n) * 100)}% · ${lastCold.s} ${lastCold.s === 1 ? "note" : "notes"}`}>
+          <div className="relative flex h-20 items-end gap-[3px]">
+            <div className="absolute inset-x-0 border-t border-dashed border-line" style={{ bottom: `${COLD_PASS * 100}%` }} />
+            {cold.map((r) => {
+              const acc = r.c / r.n;
+              return (
+                <div
+                  key={r.day}
+                  title={`${r.day} · ${r.s} ${r.s === 1 ? "note" : "notes"} · ${Math.round(acc * 100)}%`}
+                  className={clsx("min-w-0 max-w-5 flex-1 rounded-[3px]", acc >= COLD_PASS ? "bg-accent" : "bg-muted/40")}
+                  style={{ height: `${Math.max(6, acc * 100)}%` }}
+                />
+              );
+            })}
+          </div>
+        </Section>
+      )}
 
       <Section title="Days">
         <Calendar days={s.days} />

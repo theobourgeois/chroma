@@ -9,6 +9,7 @@ import type { Naming } from "./music";
 
 export type GameId =
   | "ladder"
+  | "cold"
   | "spotlight"
   | "notes"
   | "intervals"
@@ -29,6 +30,8 @@ export type Settings = {
 };
 
 export type LevelRun = { s: number; l: number; acc: number; rt: number; pass: boolean; at: number };
+/** One memory check: the day, the pitches in training, the score. */
+export type ColdRun = { day: string; s: number; c: number; n: number };
 
 export type Ladder = {
   /** How many pitches are in training, 1–12. */
@@ -44,6 +47,7 @@ export type Ladder = {
   finalAt?: number;
   mastered?: number;
   log: LevelRun[];
+  cold: ColdRun[];
 };
 
 export type PitchStat = { n: number; c: number; recent: number[]; rt: number };
@@ -74,7 +78,7 @@ const KEY = "chroma:v1";
 const fresh = (): State => ({
   v: 1,
   settings: { naming: "sharp", sound: "piano", remind: false, remindAt: "19:00", everything: false },
-  ladder: { stage: 1, level: 0, fails: 0, sinceSpot: 0, finalPasses: 0, log: [] },
+  ladder: { stage: 1, level: 0, fails: 0, sinceSpot: 0, finalPasses: 0, log: [], cold: [] },
   pitch: Array.from({ length: 12 }, () => ({ n: 0, c: 0, recent: [], rt: 0 })),
   games: {},
   days: {},
@@ -92,7 +96,12 @@ function load() {
     if (raw) {
       const saved = JSON.parse(raw) as State;
       const base = fresh();
-      state = { ...base, ...saved, settings: { ...base.settings, ...saved.settings } };
+      state = {
+        ...base,
+        ...saved,
+        settings: { ...base.settings, ...saved.settings },
+        ladder: { ...base.ladder, ...saved.ladder },
+      };
     }
   } catch {}
 }

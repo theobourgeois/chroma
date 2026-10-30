@@ -13,7 +13,7 @@
  */
 
 import { pcOf, rand, shuffle } from "./music";
-import type { Ladder, LevelRun } from "./store";
+import type { Day, Ladder, LevelRun } from "./store";
 
 /** F, then alternately below and above. */
 export const ORDER = [5, 4, 6, 3, 7, 2, 8, 1, 9, 0, 10, 11];
@@ -31,7 +31,7 @@ export const LEVELS: Level[] = [
   { pass: 0.9, feedback: false, slack: 0 },
   { pass: 0.9, feedback: false, slack: 0 },
 ];
-/** First level that asks for 90%: where a strong run jumps to. */
+/** First level that asks for 90%: where a strong run jumps to, and where a held pitch set keeps practising with feedback. */
 const JUMP_TO = 5;
 export const TRIALS = 20;
 /** Taps are slower than the study's mouse clicks. */
@@ -39,6 +39,36 @@ const TOUCH_MS = 250;
 export const OCTAVES = [3, 4, 5];
 /** Wait before the one-take check of the final level. */
 export const FINAL_WAIT = 12 * 3600_000;
+
+/**
+ * The memory check: the day's first notes, with nothing played beforehand and
+ * no feedback. Levels can be passed on notes you heard a minute ago; this is
+ * what shows they lasted overnight, so it alone opens the next pitch.
+ */
+export const COLD_PASS = 0.8;
+/** Checks in a row at COLD_PASS: one good day can be luck. */
+export const COLD_STREAK = 2;
+/** Long enough to recall a note, too short to work it out from the last one. */
+export const COLD_WINDOW = 6000;
+/** Twelve, or enough to hear every pitch in training. */
+export const coldTrials = (stage: number) => Math.max(12, stage * 2);
+/** Only when there's something to remember and nothing has been heard today. */
+export const coldDue = (l: Ladder, today?: Day) => l.log.length > 0 && !today?.n;
+
+export function logCold(l: Ladder, day: string, c: number, n: number) {
+  l.cold = [...l.cold.filter((r) => r.day !== day), { day, s: l.stage, c, n }].slice(-180);
+}
+
+/** Passes in a row with the current pitches. */
+export function coldPasses(l: Ladder): number {
+  let passes = 0;
+  for (let i = l.cold.length - 1; i >= 0; i--) {
+    const r = l.cold[i];
+    if (r.s !== l.stage || r.c / r.n < COLD_PASS) break;
+    passes++;
+  }
+  return passes;
+}
 
 /** The study's windows: 1,183 ms with one pitch, 2,028 ms with all twelve. */
 export function windowMs(stage: number, level: number): number {
@@ -84,7 +114,11 @@ export const isFinal = (l: Pick<Ladder, "stage" | "level">) => l.stage === 12 &&
 export const finalCheck = (l: Ladder) => isFinal(l) && l.finalPasses >= 3 && !l.mastered;
 
 /** Moves the ladder on after a run. Returns what changed, for the result screen. */
-export function advance(l: Ladder, acc: number, rt: number): { pass: boolean; newPitch?: number; jumped?: boolean } {
+export function advance(
+  l: Ladder,
+  acc: number,
+  rt: number,
+): { pass: boolean; newPitch?: number; jumped?: boolean; held?: boolean } {
   const level = LEVELS[l.level];
   const pass = acc >= level.pass;
   const run: LevelRun = { s: l.stage, l: l.level, acc, rt, pass, at: Date.now() };
@@ -110,6 +144,10 @@ export function advance(l: Ladder, acc: number, rt: number): { pass: boolean; ne
   }
   l.fails = 0;
   if (l.level === LEVELS.length - 1) {
+    if (coldPasses(l) < COLD_STREAK) {
+      l.level = JUMP_TO;
+      return { pass, held: true };
+    }
     l.stage++;
     l.level = 0;
     return { pass, newPitch: ORDER[l.stage - 1] };
