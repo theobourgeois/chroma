@@ -31,7 +31,7 @@ export const LEVELS: Level[] = [
   { pass: 0.9, feedback: false, slack: 0 },
   { pass: 0.9, feedback: false, slack: 0 },
 ];
-/** First level that asks for 90%: where a strong run jumps to, and where a held pitch set keeps practising with feedback. */
+/** First level that asks for 90%: where a strong run jumps to. */
 const JUMP_TO = 5;
 export const TRIALS = 20;
 /** Taps are slower than the study's mouse clicks. */
@@ -55,9 +55,37 @@ export const coldTrials = (stage: number) => Math.max(12, stage * 2);
 /** Only when there's something to remember and nothing has been heard today. */
 export const coldDue = (l: Ladder, today?: Day) => l.log.length > 0 && !today?.n;
 
-export function logCold(l: Ladder, day: string, c: number, n: number) {
+/**
+ * Logs the day's check and returns the streak it makes. When the ladder is
+ * already done with these pitches, the check that completes the streak opens
+ * the next one.
+ */
+export function logCold(l: Ladder, day: string, c: number, n: number): { passes: number; opened?: number } {
+  const wasHeld = held(l);
   l.cold = [...l.cold.filter((r) => r.day !== day), { day, s: l.stage, c, n }].slice(-180);
+  const passes = coldPasses(l);
+  if (!wasHeld || passes < COLD_STREAK) return { passes };
+  return { passes, opened: openNext(l) };
 }
+
+function openNext(l: Ladder): number {
+  l.stage++;
+  l.level = 0;
+  l.fails = 0;
+  return ORDER[l.stage - 1];
+}
+
+/**
+ * The last level is passed but memory hasn't caught up. Repeating levels by
+ * then only trains comparing each note with the last, so practice switches to
+ * recall: feedback on, and the ear cleared before every note.
+ */
+export const held = (l: Pick<Ladder, "stage" | "log">) =>
+  l.stage < 12 && l.log.some((r) => r.s === l.stage && r.l === LEVELS.length - 1 && r.pass);
+
+/** Recall practice: a short falling wash before each note, then this long to answer. */
+export const MASK_SECS = 2;
+export const RECALL_WINDOW = 3000;
 
 /** Passes in a row with the current pitches. */
 export function coldPasses(l: Ladder): number {
@@ -119,6 +147,13 @@ export function advance(
   acc: number,
   rt: number,
 ): { pass: boolean; newPitch?: number; jumped?: boolean; held?: boolean } {
+  // Recall practice is logged against the last level and moves nothing: the memory check opens the next pitch.
+  if (held(l)) {
+    const pass = acc >= LEVELS[LEVELS.length - 1].pass;
+    l.log = [...l.log, { s: l.stage, l: LEVELS.length - 1, acc, rt, pass, at: Date.now() }].slice(-600);
+    l.sinceSpot++;
+    return { pass, held: true };
+  }
   const level = LEVELS[l.level];
   const pass = acc >= level.pass;
   const run: LevelRun = { s: l.stage, l: l.level, acc, rt, pass, at: Date.now() };
@@ -144,13 +179,8 @@ export function advance(
   }
   l.fails = 0;
   if (l.level === LEVELS.length - 1) {
-    if (coldPasses(l) < COLD_STREAK) {
-      l.level = JUMP_TO;
-      return { pass, held: true };
-    }
-    l.stage++;
-    l.level = 0;
-    return { pass, newPitch: ORDER[l.stage - 1] };
+    if (coldPasses(l) < COLD_STREAK) return { pass, held: true };
+    return { pass, newPitch: openNext(l) };
   }
   if (acc >= 0.9 && l.level < JUMP_TO) {
     const jumped = l.level + 1 < JUMP_TO;

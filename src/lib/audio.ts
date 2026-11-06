@@ -233,7 +233,8 @@ export function toPerf(t: number): number {
 
 /**
  * A Shepard–Risset glissando: a tone that keeps falling without arriving
- * anywhere. Washes out the pitches you just listened to before an unaided level.
+ * anywhere. Washes out the pitches you just listened to. Starts at a random
+ * point so it never ends on the same notes, which would make it a reference.
  */
 export function shepard(seconds: number): { done: Promise<void>; stop: () => void } {
   const c = audio();
@@ -245,17 +246,19 @@ export function shepard(seconds: number): { done: Promise<void>; stop: () => voi
   const fmin = 32;
   const octaveSecs = 6;
   const phase = new Float64Array(N);
+  const from = Math.random() * octaveSecs;
+  const fade = Math.min(0.8, seconds / 4);
   for (let i = 0; i < len; i++) {
     const t = i / rate;
     let s = 0;
     for (let k = 0; k < N; k++) {
-      const pos = (((k - t / octaveSecs) % N) + N) % N;
+      const pos = (((k - (t + from) / octaveSecs) % N) + N) % N;
       const f = fmin * 2 ** pos;
       phase[k] += (2 * Math.PI * f) / rate;
       const amp = Math.exp(-((pos - N / 2) ** 2) / 2.2);
       s += amp * Math.sin(phase[k]);
     }
-    const edge = Math.min(1, t / 0.8, (seconds - t) / 0.8);
+    const edge = Math.min(1, t / fade, (seconds - t) / fade);
     data[i] = s * 0.12 * edge;
   }
   const src = c.createBufferSource();
@@ -263,7 +266,11 @@ export function shepard(seconds: number): { done: Promise<void>; stop: () => voi
   const g = c.createGain();
   src.connect(g).connect(out!);
   src.start();
-  const done = new Promise<void>((r) => (src.onended = () => r()));
+  // A timer too: a suspended context (iOS in the background, no output device) never ends the source.
+  const done = new Promise<void>((r) => {
+    src.onended = () => r();
+    window.setTimeout(r, seconds * 1000 + 300);
+  });
   return {
     done,
     stop: () => {

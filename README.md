@@ -4,11 +4,12 @@ A perfect-pitch and ear-training PWA with a daily practice reminder.
 
 **Live:** https://chroma-cyan-tau.vercel.app (on iPhone, Share → Add to Home Screen to get reminders)
 
-- **Notes**: learn the 12 pitches one at a time, a ladder of levels per note
-- **Memory check**: a daily test with no notes played first; new notes only open once you pass it
-- **Ear games**: intervals, chords, progressions, scales, keys, and singing a note back
+- **Notes**: learn the 12 pitches one at a time, a ladder of levels per note; the daily session is all ladder, about 15 minutes
+- **Memory check**: a daily test with no notes played first, then the misses played back; new notes only open once you pass it
+- **Recall**: once the ladder is passed, practice clears your ear before every note so you can't lean on the last one
+- **Ear games**: intervals, chords, keys, and singing a note back, in Train
 - **Tuner**: hum, sing or whistle and see the note
-- **Daily reminder**: a web push at the time you pick
+- **Reminders**: a web push at the time you pick, plus two short recall check-ins during the day
 
 ## Stack
 

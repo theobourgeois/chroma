@@ -5,7 +5,7 @@ import { Check } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { unlock } from "@/lib/audio";
 import { plan, type Step } from "@/lib/daily";
-import { LEVELS, trained } from "@/lib/ladder";
+import { held, LEVELS, trained } from "@/lib/ladder";
 import { currentPushState, type PushState } from "@/lib/push";
 import { setReminders } from "@/lib/reminder";
 import { dayKey, streak, useStore } from "@/lib/store";
@@ -76,7 +76,7 @@ export function Today({ onStart }: { onStart: (steps: Step[], daily: boolean) =>
         <div className="text-[15px] text-muted tabular-nums">
           {s.ladder.mastered
             ? "All twelve"
-            : `${lit.length} of 12 · level ${s.ladder.level + 1} of ${LEVELS.length}`}
+            : `${lit.length} of 12 · ${held(s.ladder) ? "recall" : `level ${s.ladder.level + 1} of ${LEVELS.length}`}`}
         </div>
       </div>
 

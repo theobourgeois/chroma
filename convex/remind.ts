@@ -7,10 +7,12 @@ import { env, internalAction } from "./_generated/server";
 
 const GENERIC = ["Your daily session is ready.", "Ten minutes for your ears.", "Twelve notes are waiting."];
 
-/** Sends one device its daily reminder, then books tomorrow's. */
+const CHECK = ["A few notes, from memory.", "Which note is this?", "Thirty seconds for your ears."];
+
+/** Sends one device its daily reminder or one of its check-ins, then books tomorrow's. */
 export const fire = internalAction({
-  args: { id: v.id("devices") },
-  handler: async (ctx, { id }) => {
+  args: { id: v.id("devices"), check: v.optional(v.number()) },
+  handler: async (ctx, { id, check }) => {
     const device = await ctx.runQuery(internal.devices.get, { id });
     if (!device) return null;
     const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } = env;
@@ -18,13 +20,17 @@ export const fire = internalAction({
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) console.warn("VAPID keys are not set; skipping push");
     else {
       webpush.setVapidDetails(VAPID_SUBJECT ?? "mailto:noreply@example.com", VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-      const body = device.body ?? GENERIC[Math.floor(Date.now() / 86_400_000) % GENERIC.length];
+      const day = Math.floor(Date.now() / 86_400_000);
+      const payload =
+        check === undefined
+          ? { title: "Chroma", body: device.body ?? GENERIC[day % GENERIC.length], url: "/?start=1", tag: "daily" }
+          : { title: "Chroma", body: CHECK[(day + check) % CHECK.length], url: "/?check=1", tag: "check" };
       try {
         await webpush.sendNotification(
           { endpoint: device.endpoint, keys: { p256dh: device.p256dh, auth: device.auth } },
-          JSON.stringify({ title: "Chroma", body, url: "/?start=1", tag: "daily" }),
+          JSON.stringify(payload),
           // A reminder that shows up hours late is worse than none.
-          { TTL: 4 * 3600, urgency: "normal" },
+          { TTL: (check === undefined ? 4 : 1) * 3600, urgency: "normal" },
         );
       } catch (err) {
         const { statusCode, body } = err as { statusCode?: number; body?: string };
@@ -32,7 +38,7 @@ export const fire = internalAction({
         console.error("push failed", new URL(device.endpoint).host, statusCode, body ?? err);
       }
     }
-    await ctx.runMutation(internal.devices.rearm, { id, gone });
+    await ctx.runMutation(internal.devices.rearm, { id, gone, check });
     return null;
   },
 });

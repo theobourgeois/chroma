@@ -9,10 +9,7 @@ import {
   type Naming,
   pcName,
   pick,
-  PROGRESSIONS,
   rand,
-  SCALES,
-  voiceProgression,
 } from "./music";
 import type { GameId, State } from "./store";
 
@@ -51,7 +48,7 @@ const learned = (s: State) => {
 /** Root notes stay in a comfortable middle register. */
 const root = (lo = 48, hi = 64) => lo + rand(hi - lo + 1);
 
-export const GAMES: Record<Exclude<GameId, "ladder" | "cold" | "sing">, Game> = {
+export const GAMES: Record<Exclude<GameId, "ladder" | "cold" | "recall" | "sing">, Game> = {
   notes: {
     id: "notes",
     name: "Notes",
@@ -108,35 +105,6 @@ export const GAMES: Record<Exclude<GameId, "ladder" | "cold" | "sing">, Game> = 
       const tones: Tone[] = ch.tones.map((t) => ({ midi: r + t, dur: 1.8, gain: 0.75 }));
       tones.push({ midi: r - 12, dur: 1.8, gain: 0.6 });
       return { answer: ch.id, tones };
-    },
-  },
-  progressions: {
-    id: "progressions",
-    name: "Progressions",
-    layout: "grid",
-    items: () => PROGRESSIONS,
-    start: 2,
-    make: (pool) => {
-      const pr = pick(pool) as (typeof PROGRESSIONS)[number];
-      const chords = voiceProgression(rand(12), pr.chords);
-      const tones = chords.flatMap((ch, i) =>
-        ch.map((midi, j) => ({ midi, at: i * 0.9, dur: 0.95, gain: j === 0 ? 0.6 : 0.55 })),
-      );
-      return { answer: pr.id, tones };
-    },
-  },
-  scales: {
-    id: "scales",
-    name: "Scales",
-    layout: "grid",
-    items: () => SCALES,
-    start: 2,
-    make: (pool) => {
-      const sc = pick(pool) as (typeof SCALES)[number];
-      const r = root(55, 64);
-      const step = sc.steps.length > 9 ? 0.18 : 0.26;
-      const tones = sc.steps.map((t, i) => ({ midi: r + t, at: i * step, dur: step + 0.25 }));
-      return { answer: sc.id, tones };
     },
   },
   keys: {

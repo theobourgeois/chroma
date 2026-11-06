@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { unlock } from "@/lib/audio";
 import type { Step } from "@/lib/daily";
 import { GAMES, pool } from "@/lib/games";
-import { LEVELS } from "@/lib/ladder";
+import { held, LEVELS } from "@/lib/ladder";
 import { accuracy, type GameId, type State, useStore } from "@/lib/store";
 
 type Row = { game: Exclude<GameId, "cold">; name: string; count: number };
@@ -15,6 +15,7 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     title: "Perfect pitch",
     rows: [
       { game: "ladder", name: "Ladder", count: 1 },
+      { game: "recall", name: "Recall", count: 12 },
       { game: "spotlight", name: "Spotlight", count: 34 },
       { game: "notes", name: "Notes", count: 20 },
       { game: "sing", name: "Sing", count: 10 },
@@ -25,15 +26,14 @@ const SECTIONS: { title: string; rows: Row[] }[] = [
     rows: [
       { game: "intervals", name: "Intervals", count: 20 },
       { game: "chords", name: "Chords", count: 20 },
-      { game: "progressions", name: "Progressions", count: 12 },
-      { game: "scales", name: "Scales", count: 12 },
       { game: "keys", name: "Keys", count: 12 },
     ],
   },
 ];
 
 function detail(row: Row, s: State): string {
-  if (row.game === "ladder") return `${s.ladder.stage}/12 · L${s.ladder.level + 1}/${LEVELS.length}`;
+  if (row.game === "ladder") return `${s.ladder.stage}/12 · ${held(s.ladder) ? "recall" : `L${s.ladder.level + 1}/${LEVELS.length}`}`;
+  if (row.game === "recall") return "";
   if (row.game === "sing" || row.game === "spotlight") {
     const r = s.games[row.game]?.recent ?? [];
     return r.length ? `${Math.round(accuracy(r) * 100)}%` : "";

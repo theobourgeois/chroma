@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { BarChart3, Dumbbell, Settings as Gear, Mic, Sun } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { preload, unlock } from "@/lib/audio";
-import { plan, type Step } from "@/lib/daily";
+import { checkIn, plan, type Step } from "@/lib/daily";
 import { useReloadOnDeploy } from "@/lib/freshness";
 import { registerServiceWorker } from "@/lib/push";
 import { syncReminder } from "@/lib/reminder";
@@ -48,17 +48,27 @@ export function App() {
     setSession((cur) => cur ?? { steps: plan(get()), daily: true, id: Date.now() });
   }, []);
 
+  // A check-in from a notification: a few notes, unless a session is already open.
+  const openCheck = useCallback(() => {
+    setTab("today");
+    setSession((cur) => cur ?? { steps: [checkIn(get())], daily: false, id: Date.now() });
+  }, []);
+
   useEffect(() => {
     void registerServiceWorker()?.catch(() => {});
     void syncReminder().catch(() => {});
     const url = new URL(location.href);
-    if (url.searchParams.has("start")) {
+    if (url.searchParams.has("start") || url.searchParams.has("check")) {
       history.replaceState(null, "", "/");
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      openToday();
+      if (url.searchParams.has("check")) openCheck();
+      else openToday();
     }
     const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === "open" && String(e.data.url).includes("start=1")) openToday();
+      if (e.data?.type !== "open") return;
+      const target = String(e.data.url);
+      if (target.includes("check=1")) openCheck();
+      else if (target.includes("start=1")) openToday();
     };
     navigator.serviceWorker?.addEventListener("message", onMessage);
     // iOS keeps audio suspended until a tap, and re-suspends it after backgrounding.
@@ -69,7 +79,7 @@ export function App() {
       navigator.serviceWorker?.removeEventListener("message", onMessage);
       for (const g of GESTURES) window.removeEventListener(g, unlock);
     };
-  }, [openToday]);
+  }, [openToday, openCheck]);
 
   useEffect(() => {
     void preload(sound);

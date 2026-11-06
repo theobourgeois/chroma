@@ -10,12 +10,11 @@ import type { Naming } from "./music";
 export type GameId =
   | "ladder"
   | "cold"
+  | "recall"
   | "spotlight"
   | "notes"
   | "intervals"
   | "chords"
-  | "progressions"
-  | "scales"
   | "keys"
   | "sing";
 
@@ -27,6 +26,8 @@ export type Settings = {
   remindAt: string;
   /** Skip gradual unlocking in the ear games. */
   everything: boolean;
+  /** Short recall check-ins between sessions, alongside the daily reminder. */
+  checkins: boolean;
 };
 
 export type LevelRun = { s: number; l: number; acc: number; rt: number; pass: boolean; at: number };
@@ -74,10 +75,11 @@ export type State = {
 };
 
 const KEY = "chroma:v1";
+const REMOVED: string[] = ["progressions", "scales"];
 
 const fresh = (): State => ({
   v: 1,
-  settings: { naming: "sharp", sound: "piano", remind: false, remindAt: "19:00", everything: false },
+  settings: { naming: "sharp", sound: "piano", remind: false, remindAt: "19:00", everything: false, checkins: true },
   ladder: { stage: 1, level: 0, fails: 0, sinceSpot: 0, finalPasses: 0, log: [], cold: [] },
   pitch: Array.from({ length: 12 }, () => ({ n: 0, c: 0, recent: [], rt: 0 })),
   games: {},
@@ -102,6 +104,12 @@ function load() {
         settings: { ...base.settings, ...saved.settings },
         ladder: { ...base.ladder, ...saved.ladder },
       };
+      // A plan pinned before Progressions and Scales went away: swap in place so the step count holds.
+      for (const day of Object.values(state.days)) {
+        day.plan = day.plan?.map((step) =>
+          REMOVED.includes(step.game) ? { game: "notes", count: step.count, name: "Notes" } : step,
+        );
+      }
     }
   } catch {}
 }

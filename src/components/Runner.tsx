@@ -8,6 +8,7 @@ import { dayKey, get, streak, update } from "@/lib/store";
 import { ColdCheck } from "./ColdCheck";
 import { LadderRun } from "./LadderRun";
 import { Quiz, type Result } from "./Quiz";
+import { Recall } from "./Recall";
 import { Sing } from "./Sing";
 import { Button, Layer } from "./ui";
 
@@ -74,6 +75,8 @@ export function Runner({ steps, daily, onClose }: { steps: Step[]; daily: boolea
         <LadderRun key={`${idx}-${round}`} levels={daily ? step.count : Infinity} onDone={finished} onClose={onClose} />
       ) : step.game === "cold" ? (
         <ColdCheck key={`${idx}-${round}`} count={step.count} onDone={finished} onClose={onClose} />
+      ) : step.game === "recall" ? (
+        <Recall key={`${idx}-${round}`} count={step.count} onDone={finished} onClose={onClose} />
       ) : step.game === "sing" ? (
         <Sing key={`${idx}-${round}`} count={step.count} onDone={finished} onClose={onClose} />
       ) : (

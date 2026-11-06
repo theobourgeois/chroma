@@ -81,6 +81,17 @@ export function Settings({ onClose }: { onClose: () => void }) {
               />
             </Row>
           )}
+          {remindOn && (
+            <Row label="Check-ins" detail="12:30 and 4 pm">
+              <Switch
+                on={settings.checkins}
+                onChange={(on) => {
+                  update((s) => void (s.settings.checkins = on));
+                  void syncReminder().catch(() => {});
+                }}
+              />
+            </Row>
+          )}
           {(push === "needs-install" || push === "denied" || push === "unsupported") && (
             <div className="border-t-[0.5px] border-line px-4 py-3 text-[14px] text-muted">
               {push === "needs-install"
@@ -153,10 +164,13 @@ function Group({ title, children }: { title?: string; children: ReactNode }) {
   );
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+function Row({ label, detail, children }: { label: string; detail?: string; children: ReactNode }) {
   return (
     <div className="flex h-[54px] items-center gap-3 border-t-[0.5px] border-line px-4 first:border-t-0">
-      <span className="flex-1 text-[17px]">{label}</span>
+      <span className="flex-1 text-[17px]">
+        {label}
+        {detail && <span className="ml-2 text-[15px] text-muted">{detail}</span>}
+      </span>
       {children}
     </div>
   );

@@ -11,10 +11,13 @@ import {
   deck,
   FINAL_WAIT,
   finalCheck,
+  held,
   isFinal,
   LEVELS,
+  MASK_SECS,
   OCTAVES,
   outOfBounds,
+  RECALL_WINDOW,
   stepBack,
   trained,
   type Trial,
@@ -56,10 +59,11 @@ export function LadderRun({
     return () => stopAll();
   }, [sound]);
 
-  const level = LEVELS[ladder.level];
+  const recall = held(ladder);
+  const level = recall ? { ...LEVELS[LEVELS.length - 1], feedback: true } : LEVELS[ladder.level];
   const set = trained(ladder.stage);
   const sorted = [...set].sort((a, b) => a - b);
-  const window_ = windowMs(ladder.stage, ladder.level);
+  const window_ = recall ? RECALL_WINDOW : windowMs(ladder.stage, ladder.level);
   const check = finalCheck(ladder);
   const [now] = useState(() => Date.now());
   const waitLeft = check && ladder.finalAt ? ladder.finalAt + FINAL_WAIT - now : 0;
@@ -92,13 +96,17 @@ export function LadderRun({
           <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 text-center">
             <div>
               <div className="text-[15px] font-medium text-muted">
-                {ladder.mastered ? "Mastered" : check ? "One-take check" : `${set.length} ${set.length === 1 ? "pitch" : "pitches"} · Level ${ladder.level + 1} of ${LEVELS.length}`}
+                {ladder.mastered
+                  ? "Mastered"
+                  : check
+                    ? "One-take check"
+                    : `${set.length} ${set.length === 1 ? "pitch" : "pitches"} · ${recall ? "All levels passed" : `Level ${ladder.level + 1} of ${LEVELS.length}`}`}
               </div>
               <div className="mt-2 text-[34px] font-bold tracking-tight">
-                {level.feedback ? "With feedback" : "No feedback"}
+                {recall ? "Recall" : level.feedback ? "With feedback" : "No feedback"}
               </div>
               <div className="mt-1 text-[17px] text-muted tabular-nums">
-                {Math.round(level.pass * 100)}% in {(window_ / 1000).toFixed(1)} s
+                {recall ? `Ear cleared before every note · ${(window_ / 1000).toFixed(1)} s` : `${Math.round(level.pass * 100)}% in ${(window_ / 1000).toFixed(1)} s`}
               </div>
             </div>
             <div className="flex max-w-[320px] flex-wrap justify-center gap-2">
@@ -135,7 +143,12 @@ export function LadderRun({
             <Button className="w-full" onClick={begin}>
               Start
             </Button>
-            {ladder.fails >= 5 && ladder.level > 0 && (
+            {recall && (
+              <div className="pb-2 text-center text-[14px] text-muted">
+                The next note opens after {COLD_STREAK} memory checks in a row at {Math.round(COLD_PASS * 100)}%
+              </div>
+            )}
+            {!recall && ladder.fails >= 5 && ladder.level > 0 && (
               <Button kind="plain" onClick={() => update((s) => stepBack(s.ladder))}>
                 Step back a level
               </Button>
@@ -149,6 +162,7 @@ export function LadderRun({
           stage={ladder.stage}
           windowMs={window_}
           feedback={level.feedback}
+          mask={recall}
           onClose={onClose}
           onFinish={finish}
           sound={sound}
@@ -169,11 +183,13 @@ export function LadderRun({
                 ? "Perfect pitch, all twelve."
                 : outcome.newPitch !== undefined
                   ? `New pitch: ${pcName(outcome.newPitch, naming)}`
-                  : outcome.pass
-                    ? outcome.jumped
-                      ? "Skipping ahead"
-                      : "Passed"
-                    : "Again"}
+                  : outcome.held && !outcome.pass
+                    ? "Recall"
+                    : outcome.pass
+                      ? outcome.jumped
+                        ? "Skipping ahead"
+                        : "Passed"
+                      : "Again"}
             </div>
             {outcome.held && (
               <div className="max-w-[260px] text-[15px] text-muted">
@@ -203,12 +219,15 @@ export function LadderRun({
   );
 }
 
+export type Answer = { trial: Trial; choice: number | "other" | "late"; right: boolean };
+
 /** One level: tones, a shrinking answer window, the keyboard plus "Other". */
 export function Trials({
   stage,
   count,
   windowMs: limit,
   feedback,
+  mask = false,
   sound,
   onClose,
   onFinish,
@@ -217,9 +236,11 @@ export function Trials({
   count?: number;
   windowMs: number;
   feedback: boolean;
+  /** A short wash before every note, so the last one can't serve as a reference. */
+  mask?: boolean;
   sound: Parameters<typeof play>[1];
   onClose: () => void;
-  onFinish: (acc: number, rt: number, n: number, c: number) => void;
+  onFinish: (acc: number, rt: number, n: number, c: number, answers: Answer[]) => void;
 }) {
   const naming = useStore((s) => s.settings.naming);
   const [trials] = useState<Trial[]>(() => deck(stage, count));
@@ -231,10 +252,11 @@ export function Trials({
   // Never run a level in silence: answering blind still scores.
   const [muted, setMuted] = useState(() => !soundOn());
   const raf = useRef(0);
-  const score = useRef({ c: 0, rts: [] as number[] });
+  const score = useRef({ c: 0, rts: [] as number[], answers: [] as Answer[] });
   const set = trained(stage);
   const hasOut = outOfBounds(stage).length > 0;
   const trial = trials[i];
+  const washing = mask && !muted && !!trial && !startedAt && picked === null;
 
   const resolve = useCallback(
     (choice: number | "other" | "late") => {
@@ -246,6 +268,7 @@ export function Trials({
         score.current.c++;
         score.current.rts.push(rt);
       }
+      score.current.answers.push({ trial, choice, right });
       setPicked(choice);
       update((s) => record(s, right, trial.outside ? undefined : trial.pc, rt));
       if (!right && feedback) {
@@ -272,24 +295,32 @@ export function Trials({
     if (i >= trials.length) {
       const rts = score.current.rts;
       const avg = rts.length ? rts.reduce((a, b) => a + b, 0) / rts.length : 0;
-      onFinish(score.current.c / trials.length, avg, trials.length, score.current.c);
+      onFinish(score.current.c / trials.length, avg, trials.length, score.current.c, score.current.answers);
       return;
     }
     onset.current = 0;
     let alive = true;
-    void play([{ midi: trials[i].midi }], sound).then((t) => {
-      if (!alive) return;
-      onset.current = toPerf(t);
-      setStartedAt(onset.current);
-      const tick = () => {
-        const left = 1 - (performance.now() - onset.current) / limit;
-        if (bar.current) bar.current.style.transform = `scaleX(${Math.max(0, Math.min(1, left))})`;
-        if (left > 0) raf.current = requestAnimationFrame(tick);
-      };
-      tick();
-    });
+    const tone = () =>
+      void play([{ midi: trials[i].midi }], sound).then((t) => {
+        if (!alive) return;
+        onset.current = toPerf(t);
+        setStartedAt(onset.current);
+        const tick = () => {
+          const left = 1 - (performance.now() - onset.current) / limit;
+          if (bar.current) bar.current.style.transform = `scaleX(${Math.max(0, Math.min(1, left))})`;
+          if (left > 0) raf.current = requestAnimationFrame(tick);
+        };
+        tick();
+      });
+    let wash: ReturnType<typeof shepard> | null = null;
+    if (mask) {
+      if (bar.current) bar.current.style.transform = "scaleX(1)";
+      wash = shepard(MASK_SECS);
+      void wash.done.then(() => alive && tone());
+    } else tone();
     return () => {
       alive = false;
+      wash?.stop();
       cancelAnimationFrame(raf.current);
     };
     // Runs per trial; everything else it reads is fixed for the level.
@@ -318,7 +349,7 @@ export function Trials({
     <>
       <SessionBar onClose={onClose} progress={Math.max(0, i + (picked !== null ? 1 : 0)) / trials.length} right={`${Math.min(trials.length, Math.max(1, i + 1))}/${trials.length}`} />
       <div className="flex flex-1 flex-col items-center justify-center gap-5 py-6">
-        <div className="h-5 text-[15px] font-medium text-muted">{feedback ? "" : "No feedback"}</div>
+        <div className="h-5 text-[15px] font-medium text-muted">{washing ? "Clearing your ear" : feedback ? "" : "No feedback"}</div>
         {muted ? (
           <Orb
             onClick={() => {

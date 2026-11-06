@@ -187,7 +187,7 @@ export function Quiz({
           />
         )}
         {game.layout === "grid" && (
-          <div className={clsx("grid gap-2", gameId === "intervals" || gameId === "chords" ? "grid-cols-3" : "grid-cols-2")}>
+          <div className="grid grid-cols-3 gap-2">
             {items.map((it) => {
               const mark = picked && feedback ? (it.id === q?.answer ? "right" : it.id === picked ? "wrong" : null) : null;
               return (

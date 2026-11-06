@@ -65,49 +65,15 @@ export const CHORDS: (Item & { tones: number[] })[] = [
   { id: "mmaj7", name: "Minor-maj 7", tones: [0, 3, 7, 11] },
 ];
 
-export const SCALES: (Item & { steps: number[] })[] = [
-  { id: "major", name: "Major", steps: [0, 2, 4, 5, 7, 9, 11, 12] },
-  { id: "minor", name: "Natural minor", steps: [0, 2, 3, 5, 7, 8, 10, 12] },
-  { id: "majpent", name: "Major pent.", steps: [0, 2, 4, 7, 9, 12] },
-  { id: "minpent", name: "Minor pent.", steps: [0, 3, 5, 7, 10, 12] },
-  { id: "harm", name: "Harmonic minor", steps: [0, 2, 3, 5, 7, 8, 11, 12] },
-  { id: "dorian", name: "Dorian", steps: [0, 2, 3, 5, 7, 9, 10, 12] },
-  { id: "mixo", name: "Mixolydian", steps: [0, 2, 4, 5, 7, 9, 10, 12] },
-  { id: "blues", name: "Blues", steps: [0, 3, 5, 6, 7, 10, 12] },
-  { id: "lydian", name: "Lydian", steps: [0, 2, 4, 6, 7, 9, 11, 12] },
-  { id: "phryg", name: "Phrygian", steps: [0, 1, 3, 5, 7, 8, 10, 12] },
-  { id: "melo", name: "Melodic minor", steps: [0, 2, 3, 5, 7, 9, 11, 12] },
-  { id: "whole", name: "Whole tone", steps: [0, 2, 4, 6, 8, 10, 12] },
-  { id: "locrian", name: "Locrian", steps: [0, 1, 3, 5, 6, 8, 10, 12] },
-  { id: "chrom", name: "Chromatic", steps: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] },
-];
-
 /** Diatonic chords of a major key: root offset and quality. */
 const DEGREES: Record<string, [number, number[]]> = {
   I: [0, [0, 4, 7]],
-  ii: [2, [0, 3, 7]],
-  iii: [4, [0, 3, 7]],
   IV: [5, [0, 4, 7]],
-  V: [7, [0, 4, 7]],
   V7: [7, [0, 4, 7, 10]],
-  vi: [9, [0, 3, 7]],
-  "♭VII": [10, [0, 4, 7]],
 };
 
-export const PROGRESSIONS: (Item & { chords: string[] })[] = [
-  { id: "1451", name: "I IV V I", chords: ["I", "IV", "V", "I"] },
-  { id: "1564", name: "I V vi IV", chords: ["I", "V", "vi", "IV"] },
-  { id: "1645", name: "I vi IV V", chords: ["I", "vi", "IV", "V"] },
-  { id: "251", name: "ii V I", chords: ["I", "ii", "V7", "I"] },
-  { id: "6415", name: "vi IV I V", chords: ["vi", "IV", "I", "V"] },
-  { id: "1465", name: "I IV vi V", chords: ["I", "IV", "vi", "V"] },
-  { id: "1625", name: "I vi ii V", chords: ["I", "vi", "ii", "V"] },
-  { id: "1b741", name: "I ♭VII IV I", chords: ["I", "♭VII", "IV", "I"] },
-  { id: "1345", name: "I iii IV V", chords: ["I", "iii", "IV", "V"] },
-];
-
 /** Closest-moving voicings for a run of chords, bass an octave under. Notes are MIDI. */
-export function voiceProgression(tonic: number, chords: string[]): number[][] {
+function voiceProgression(tonic: number, chords: string[]): number[][] {
   let prev: number[] | null = null;
   return chords.map((deg) => {
     const [root, tones] = DEGREES[deg];

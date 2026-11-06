@@ -13,8 +13,6 @@ const GAME_NAMES: [GameId, string][] = [
   ["sing", "Sing"],
   ["intervals", "Intervals"],
   ["chords", "Chords"],
-  ["progressions", "Progressions"],
-  ["scales", "Scales"],
   ["keys", "Keys"],
 ];
 

@@ -12,5 +12,7 @@ export default defineSchema({
     /** Text for that reminder; cleared once sent so a missed day gets the generic one. */
     body: v.optional(v.string()),
     job: v.optional(v.id("_scheduled_functions")),
+    /** Short recall check-ins between sessions: when each next goes out, and its job. */
+    checks: v.optional(v.array(v.object({ at: v.number(), job: v.id("_scheduled_functions") }))),
   }).index("by_endpoint", ["endpoint"]),
 });

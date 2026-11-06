@@ -10,6 +10,18 @@ const SYNCED = "chroma:reminder";
 let client: ConvexHttpClient | null = null;
 const convex = () => (client ??= new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!));
 
+/** Check-ins: midday and afternoon, so a note gets recalled a few times a day rather than once. */
+export const CHECK_TIMES = ["12:30", "16:00"];
+
+/** The next time the clock reads `at`. */
+function nextClock(at: string): number {
+  const [h, m] = at.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  if (d.getTime() <= Date.now() + 60_000) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+
 /** The next reminder: today at the set time if today's session isn't done and it's still ahead, else tomorrow. */
 function nextAt(at: string, doneToday: boolean): number {
   const [h, m] = at.split(":").map(Number);
@@ -41,9 +53,11 @@ export async function syncReminder() {
   const keys = subscriptionKeys(subscription);
   const at = nextAt(s.settings.remindAt, !!s.days[dayKey()]?.done);
   const body = message();
-  const sig = `${keys.endpoint}|${at}|${body}`;
+  // Clock times, not timestamps: those move every time one passes, and the server re-books them itself.
+  const checks = s.settings.checkins ? CHECK_TIMES : [];
+  const sig = `${keys.endpoint}|${at}|${body}|${checks.join(",")}`;
   if (localStorage.getItem(SYNCED) === sig) return;
-  await convex().mutation(api.devices.save, { ...keys, nextAt: at, body });
+  await convex().mutation(api.devices.save, { ...keys, nextAt: at, body, checks: checks.map(nextClock) });
   localStorage.setItem(SYNCED, sig);
 }
 
